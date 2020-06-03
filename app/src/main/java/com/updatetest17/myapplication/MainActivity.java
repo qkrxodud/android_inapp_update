@@ -24,13 +24,10 @@ public class MainActivity extends AppCompatActivity {
     private Context mContext;
     private int REQUEST_CODE = 366;
     private AppUpdateManager appUpdateManager;
-    //
+
     private FirebaseRemoteConfig mFirebaseRemoteConfig;
     private static final String LATEST_VERSION_KEY = "latest_version";
     private String latest_version;
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,9 +37,8 @@ public class MainActivity extends AppCompatActivity {
         SystemUtil sm = new SystemUtil(this);
         sm.confirmVersion();
         //유연업데이트 실행
-        
 
-       /* appUpdateManager = AppUpdateManagerFactory.create(this);
+        appUpdateManager = AppUpdateManagerFactory.create(this);
         Task<AppUpdateInfo> appUpdateInfoTask = appUpdateManager.getAppUpdateInfo();
 
         appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
@@ -58,9 +54,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         appUpdateManager.registerListener(installStateUpdatedListener);
-        appUpdateManager.unregisterListener(installStateUpdatedListener);*/
-        //
-
+        appUpdateManager.unregisterListener(installStateUpdatedListener);
 
     }
 
