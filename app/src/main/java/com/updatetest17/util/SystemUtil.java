@@ -1,12 +1,13 @@
 package com.updatetest17.util;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.util.Log;
-import android.widget.Toast;
-
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -15,19 +16,15 @@ import com.google.android.play.core.appupdate.AppUpdateInfo;
 import com.google.android.play.core.appupdate.AppUpdateManager;
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory;
 import com.google.android.play.core.install.InstallStateUpdatedListener;
-import com.google.android.play.core.install.model.AppUpdateType;
 import com.google.android.play.core.install.model.InstallStatus;
 import com.google.android.play.core.install.model.UpdateAvailability;
+import com.google.firebase.BuildConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
-import com.updatetest17.myapplication.BuildConfig;
 import com.updatetest17.myapplication.R;
 
-import java.util.concurrent.Executor;
 
-
-public class SystemUtil {
-
+public class SystemUtil  {
     private static Activity mActivity;
     private final String TAG = getClass().getName();
     private FirebaseRemoteConfig mFirebaseRemoteConfig;
@@ -35,14 +32,14 @@ public class SystemUtil {
     private String mMyAppVersion = "";
     private String mLatestVersion = "";
 
-    //유연 업데이트
-    private AppUpdateManager appUpdateManager;
+    //업데이트
+    public AppUpdateManager appUpdateManager;
     private int REQUEST_CODE = 366;
+    public int updateGubun = 100;
 
     public SystemUtil(Activity activity) {
         this.mActivity = activity;
     }
-
     public void confirmVersion() {
         getMyAppVersion();
         getAppLastVersion();
@@ -60,7 +57,6 @@ public class SystemUtil {
 
 
     private void getAppLastVersion() {
-        //원활한 테스트 진행을 위해 디버그 모드 설정
         mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
         FirebaseRemoteConfigSettings configSettings = new FirebaseRemoteConfigSettings.Builder()
                 .setDeveloperModeEnabled(BuildConfig.DEBUG)
@@ -78,7 +74,6 @@ public class SystemUtil {
                         if (task.isSuccessful()) {
                             boolean updated = task.getResult();
                             Log.d(TAG, "Config params updated: " + updated);
-
                         }
                         displayWelcomeMessage();
                     }
@@ -86,6 +81,8 @@ public class SystemUtil {
     }
 
     private void displayWelcomeMessage() {
+        //업데이트 필요한 변수
+        appUpdateManager = AppUpdateManagerFactory.create(mActivity);
         //받아온 데이터 중 "latest_version" 라는 이름의 매개변수 값을 가져온다.
         mLatestVersion = mFirebaseRemoteConfig.getString(LATEST_VERSION_KEY);
         if(!mLatestVersion.equals(mMyAppVersion)) {
@@ -93,41 +90,44 @@ public class SystemUtil {
             String [] mMyAppVersionArr = mMyAppVersion.split("\\.");
            if(mLatestVersionArr.length > 0 && !mLatestVersionArr[0].equals(mMyAppVersionArr[0])) {
                //즉시
-
+               updateGubun = 0;
            } else {
                //유연
-               flexibleUpdate();
+               updateGubun = 1;
            }
+            updateProcess();
         }
     }
 
-    // 유연업데이트 시작
-    private void flexibleUpdate() {
-        appUpdateManager = AppUpdateManagerFactory.create(mActivity);
-        com.google.android.play.core.tasks.Task<AppUpdateInfo> appUpdateInfoTask = appUpdateManager.getAppUpdateInfo();
 
+    private void updateProcess() {
+        // 업데이트 실행
+        com.google.android.play.core.tasks.Task<AppUpdateInfo> appUpdateInfoTask = appUpdateManager.getAppUpdateInfo();
         appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
             if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
-                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)) {
+                    && appUpdateInfo.isUpdateTypeAllowed(updateGubun)) {
                 requestUpdate(appUpdateInfo);
             }
         });
 
-        InstallStateUpdatedListener installStateUpdatedListener = installState -> {
-            if (installState.installStatus() == InstallStatus.DOWNLOADED) {
-                popupSnackbarForCompleteUpdate();
-            }
-        };
-        appUpdateManager.registerListener(installStateUpdatedListener);
-        appUpdateManager.unregisterListener(installStateUpdatedListener);
+        //유연업데이트 일때작동
+        if(updateGubun == 1) {
+            InstallStateUpdatedListener installStateUpdatedListener = installState -> {
+                if (installState.installStatus() == InstallStatus.DOWNLOADED) {
+                    popupSnackbarForCompleteUpdate();
+                }
+            };
+            appUpdateManager.registerListener(installStateUpdatedListener);
+            appUpdateManager.unregisterListener(installStateUpdatedListener);
+        }
     }
 
     // 업데이트 요청
-    private void requestUpdate(AppUpdateInfo appUpdateInfo) {
+    public void requestUpdate(AppUpdateInfo appUpdateInfo) {
         try {
             appUpdateManager.startUpdateFlowForResult(
                     appUpdateInfo,
-                    AppUpdateType.FLEXIBLE,
+                    updateGubun,
                     mActivity,
                     REQUEST_CODE);
         } catch (Exception e) {
@@ -135,7 +135,7 @@ public class SystemUtil {
         }
     }
 
-    private void popupSnackbarForCompleteUpdate() {
+    public void popupSnackbarForCompleteUpdate() {
         Snackbar snackbar = Snackbar.make(mActivity.findViewById(R.id.main_lay), "An update has just been downloaded.",
                 Snackbar.LENGTH_INDEFINITE);
         snackbar.setAction("RESTART", view -> appUpdateManager.completeUpdate());
@@ -143,5 +143,37 @@ public class SystemUtil {
         snackbar.show();
     }
 
+    /*@Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE) {
+            // 업데이트가 성공적으로 끝나지 않은 경우
+            if (resultCode != RESULT_OK) {
+                com.google.android.play.core.tasks.Task<AppUpdateInfo> appUpdateInfoTask = appUpdateManager.getAppUpdateInfo();
+                appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
+                    if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                            && appUpdateInfo.isUpdateTypeAllowed(updateGubun)) {
+                        //실패할경우 지속적으로 뜨는경우....
+                        requestUpdate(appUpdateInfo);
+                    }
+                });
+            }
+        }
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        appUpdateManager
+                .getAppUpdateInfo()
+                .addOnSuccessListener(appUpdateInfo -> {
+                    if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
+                        if(updateGubun == 0) {
+                            requestUpdate(appUpdateInfo);
+                        } else {
+                            popupSnackbarForCompleteUpdate();
+                        }
+                    }
+                });
+    }*/
 }
