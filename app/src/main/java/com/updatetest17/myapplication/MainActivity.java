@@ -15,7 +15,6 @@ import android.content.Intent;
 import android.os.Bundle;
 
 public class MainActivity extends AppCompatActivity {
-    private SystemUtil mSystemUtil ;
     private AppUpdateManager mAppUpdateManager;
     private int updateGubun = -1;
 
@@ -24,8 +23,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mAppUpdateManager = AppUpdateManagerFactory.create(this);
-        mSystemUtil = new SystemUtil(this);
-        mSystemUtil.setAppLastVersion("latest_version", mAppUpdateManager);
+        SystemUtil.getInstance().setAppLastVersion("latest_version", mAppUpdateManager, this);
     }
 
     @Override
@@ -37,12 +35,12 @@ public class MainActivity extends AppCompatActivity {
             if (resultCode != RESULT_OK) {
                 Task<AppUpdateInfo> appUpdateInfoTask = mAppUpdateManager.getAppUpdateInfo();
                 appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
-                    updateGubun = mSystemUtil.compareVersion();
+                    updateGubun =  SystemUtil.getInstance().compareVersion(this);
                     if(updateGubun != -1) {
                         if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
                                 && appUpdateInfo.isUpdateTypeAllowed(updateGubun)) {
                             //실패할경우 지속적으로 뜨는경우
-                            mSystemUtil.updateProcess(mAppUpdateManager);
+                            SystemUtil.getInstance().updateProcess(mAppUpdateManager, this);
                         }
                     }
                 });
@@ -57,11 +55,11 @@ public class MainActivity extends AppCompatActivity {
                 .getAppUpdateInfo()
                 .addOnSuccessListener(appUpdateInfo -> {
                     if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
-                        updateGubun = mSystemUtil.compareVersion();
+                        updateGubun = SystemUtil.getInstance().compareVersion(this);
                         if(updateGubun == 0) {
-                            mSystemUtil.updateProcess(mAppUpdateManager);
+                            SystemUtil.getInstance().updateProcess(mAppUpdateManager, this);
                         } else if (updateGubun == 1){
-                            mSystemUtil.popupSnackbarForCompleteUpdate(mAppUpdateManager);
+                            SystemUtil.getInstance().popupSnackbarForCompleteUpdate(mAppUpdateManager, this);
                         }
                     }
                 });

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<defaultsMap>
+    <entry>
+        <key>update_message_caps</key>
+        <values>true</values>
+    </entry>
+    <entry>
+        <key>update_message</key>
+        <values>update.....</values>
+    </entry>
+</defaultsMap>
